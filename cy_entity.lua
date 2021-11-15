@@ -1,23 +1,41 @@
 
 
-local path = (...):gsub("%.cylua_entity", "")
+local path = (...):gsub("%.cy_entity", "")
 
-local sigfields = require(path..".cylua_sigfields")
-local groups = require(path..".cylua_groups")
+local groups = require(path..".cy_groups")
+local msgpack = require(path..".messagepack")
 
+local rembuffer = {} -- Where entities are put before destruction
 
 
 local function err(ent, key, val)
     -- TODO: make some docs and link em.
     local msg3 = "See TODO.github.com for more information." -- This should link the docs
     local msg2 = "Attributes can only be set if they were definined originally, and aren't shared.\n"
-    local msg = ("Attempted to set entity attribute: %s\n." .. msg2 .. msg3):format(key)
+    local msg = ("Attempted to set entity attribute: %s\n." .. msg2 .. msg3):format(tostring(key))
     error(msg)
 end
 
 
+
+local insert = table.insert
+
+local function ent_delete(ent)
+    insert(rembuffer, ent)
+end
+
+local function true_delete(ent)
+    local groups_ = ent.___type.___groups
+    for i=1, #groups_ do
+        groups_[i]:remove(ent)
+    end
+end
+
+
+
+
 local function new_ent(etype)
-    local new = { } -- The entity
+    local new = {} -- The entity
     
     for _,attr in ipairs(etype.___dynamic_fields) do
         new[attr] = false -- Dynamic attrs default to false.
@@ -27,11 +45,38 @@ local function new_ent(etype)
 
     local group_arr = etype.___groups
     for i = 1, #group_arr do
-        group_arr[i]:___add(new)
+        group_arr[i]:add(new)
     end
+    groups.all:add(new)
 
     return new
 end
+
+
+local function new_ent_fromtable(etype, new)    
+    setmetatable(new, etype.___ent_mt)
+
+    local group_arr = etype.___groups
+    for i = 1, #group_arr do
+        group_arr[i]:add(new)
+    end
+    groups.all:add(new)
+
+    return new
+end
+
+
+
+local function ent_serialize(ent)
+    return msgpack.pack()
+end
+
+
+local function ent_deserialize(etype, str)
+    local tabl = msgpack.unpack(str)
+    return new_ent_fromtable(etype, tabl)
+end
+
 
 
 local etype_mt = {
@@ -55,6 +100,7 @@ local function new_etype(tabl)
         table.insert(all_fields, key)
         parent[key] = value
     end
+    parent.delete = ent_delete
 
     local ent_mt = {
         __index = parent;
@@ -62,17 +108,26 @@ local function new_etype(tabl)
         __metatable = "Entity metatables cannot be modified."
     }
 
+    local _groups = groups._get_groups(all_fields)
+
     local etype = {
-        ___groups = groups._get_groups(all_fields),
+        ___groups = _groups,
         ___dynamic_fields = dynamic_fields,
         ___ent_mt = ent_mt
     }
+    parent.___type = etype
 
     return setmetatable(etype, etype_mt)
 end
 
 
 
-return new
+return {
+    construct   = new_etype;
+    serialize   = ent_serialize;
+    deserialize = ent_deserialize;
+    rembuffer   = rembuffer;
+    true_delete = true_delete 
+}
 
 

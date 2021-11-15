@@ -6,21 +6,10 @@
 Know what fields to serialize at "load time"
 
 
+
 Define shared constants
 
 
 Be initialized with a CTOR
-
-
-
-
-
-# networking
-Use lua-enet!!
-it uses UDP- which is fast.
-There is also optional in-order-delivery and guaranteed-arrival.
-
-
-
-
+- hmm, should this be done by cy? We don't really need a ctor do we?
 
