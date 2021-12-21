@@ -7,6 +7,8 @@ local msgpack = require(path..".messagepack")
 
 local rembuffer = {} -- Where entities are put before destruction
 
+local addbuffer = {} -- Where entities are put before being added to groups
+
 
 local function err(ent, key, val)
     -- TODO: make some docs and link em.
@@ -33,6 +35,16 @@ end
 
 
 
+local function add_to_groups(ent)
+    local etype = ent.___type
+    local group_arr = etype.___groups
+    for i = 1, #group_arr do
+        group_arr[i]:add(ent)
+    end
+    groups.all:add(ent)
+end
+
+
 
 local function new_ent(etype)
     local new = {} -- The entity
@@ -43,11 +55,8 @@ local function new_ent(etype)
     
     setmetatable(new, etype.___ent_mt)
 
-    local group_arr = etype.___groups
-    for i = 1, #group_arr do
-        group_arr[i]:add(new)
-    end
-    groups.all:add(new)
+    table.insert(addbuffer, new)
+    --add_to_groups(ent)
 
     return new
 end
@@ -56,11 +65,8 @@ end
 local function new_ent_fromtable(etype, new)    
     setmetatable(new, etype.___ent_mt)
 
-    local group_arr = etype.___groups
-    for i = 1, #group_arr do
-        group_arr[i]:add(new)
-    end
-    groups.all:add(new)
+    table.insert(addbuffer, new)
+    --add_to_groups(ent)
 
     return new
 end
@@ -68,7 +74,7 @@ end
 
 
 local function ent_serialize(ent)
-    return msgpack.pack()
+    return msgpack.serialize(ent)
 end
 
 
@@ -124,9 +130,15 @@ end
 
 return {
     construct   = new_etype;
+
     serialize   = ent_serialize;
     deserialize = ent_deserialize;
+    
     rembuffer   = rembuffer;
+    addbuffer   = addbuffer;
+
+    add_to_groups = add_to_groups;
+
     true_delete = true_delete 
 }
 

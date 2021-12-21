@@ -29,6 +29,12 @@ function cy.flush()
         true_delete(rembuffer[i])
         rembuffer[i] = nil
     end
+
+    local addbuffer = entity.addbuffer
+    for i=#addbuffer, 1, -1 do
+        entity.add_to_groups(addbuffer[i])
+        addbuffer[i] = nil
+    end
 end
 
 

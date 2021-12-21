@@ -1,6 +1,7 @@
 
-local cy = require("lib.cy.cy")
+local path = (...):gsub("%._cy_testing", "")
 
+local cy = require(path..".cy")
 
 
 local g_app = cy.get_entities("a", "b")
@@ -51,9 +52,14 @@ local APPLES = 100
 local BANANAS = 1000
 local PLANES = 503
 
+assert(g_app:size() == 0, g_app:size())
 for i=1, APPLES do
     apple()
 end
+assert(g_app:size() == 0, g_app:size())
+cy.flush()
+assert(g_app:size() == APPLES, g_app:size())
+
 
 for i=1,BANANAS do
     banana()
@@ -63,8 +69,8 @@ for i=1,PLANES do
     plane()
 end
 
+cy.flush()
 
-assert(g_app:size() == APPLES, g_app:size())
 assert(g_pla:size() == PLANES)
 assert(g_app_bana:size() == APPLES + BANANAS)
 assert(g_app_pla:size() == APPLES+PLANES)
@@ -81,12 +87,12 @@ for i, plane in ipairs(g_pla) do
     end
 end
 
-
 assert(g_pla:size() == PLANES)
 
 cy.flush()
 
 assert(g_pla:size() == PLANES - DEL)
 
-assert()
+
+print("[cy test] all tests passed")
 

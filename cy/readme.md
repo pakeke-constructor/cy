@@ -39,7 +39,7 @@ b1:delete() -- Deletes an entity.
 
 
 cy.flush() -- Deletes all queued entities.
--- This makes it so you can delete entities mid-iteration
+-- (This makes it so you can delete entities mid-iteration.)
 
 
 ```
@@ -61,14 +61,14 @@ end
 group:has(ent) -- whether a group has an ent (true/false)
 
 
-function group.added(ent)
+group.on_added(function(end)
     ... -- Called when `ent` is added to group
-end
+end)
 
 
-function group.removed(ent)
+group.on_removed(function(ent)
     ... -- Called when `ent` is removed from group
-end
+end)
 
 
 ```
@@ -83,4 +83,33 @@ to send over updates to the non-shared attributes.
 This also means that entities can have functions as components- with
 a classic implementation like Cyan, this would never work as closures are
 impossible to send over a network.
+
+
+## ADVANCED USAGE:
+```lua
+
+local main_entity = cy.entity({
+    "position", "velocity", "health"
+})
+
+
+local e1 = main_entity()
+
+
+
+e1:get_type() -- `main_entity`
+
+
+-- Also, since entity attributes are static,
+-- entities can sort their attributes and put their data in an array,
+-- as opposed to sending a whole msgpack data.
+local indx = e1:get_attribute_index("position") -- attr index of `position`.
+
+e1:get_attribute_name(index) -- "position"
+
+
+
+
+```
+
 

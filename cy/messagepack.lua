@@ -8,6 +8,7 @@ if not r then
     jit = nil
 end
 
+
 local SIZEOF_NUMBER = 8
 local NUMBER_INTEGRAL = false
 if not jit then

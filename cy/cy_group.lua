@@ -1,8 +1,13 @@
 
+local path = (...):gsub("%.cy_group", "")
+local sset = require(path..".cy_set")
+
+
 local group = {}
 local group_mt = {__index = group}
 
 
+-- `view` is what the user has access to!!!
 local view = {} -- User view method proxy
 local view_mt = {__index = view}
 
@@ -19,6 +24,30 @@ function view:has(ent)
 end
 
 
+-- callback for when entities are added  (signature:  (ent))
+function view:on_added(func)
+    local group = self.___self
+    group.added_cbs:add(func)
+end
+
+-- callback for when entities are removed (signature:  (ent))
+function view:on_removed(func)
+    local group = self.___self
+    group.removed_cbs:add(func)
+end
+
+function view:delete_callback(func)
+    local group = self.___self
+    -- deletes this callback from both `on_added` and `on_removed`
+    group.added_cbs:remove(func)
+    group.removed_cbs:remove(func)
+end
+
+
+
+
+
+
 local function objects_has(objects, candidate)
    return (objects.___self.pointers[candidate])
 end
@@ -31,8 +60,8 @@ local function new(fields)
    end
 
    local ret = setmetatable({
-      added_cbs = {}, -- Added and removed callbacks
-      removed_cbs = {},
+      added_cbs = sset(), -- Added and removed callbacks
+      removed_cbs = sset(),
 
       view      = setmetatable({}, view_mt),
       pointers  = {},
@@ -45,6 +74,7 @@ local function new(fields)
 
    return ret
 end
+
 
 
 
@@ -72,21 +102,21 @@ end
 
 
 function group:add(obj) -- private method
-   if self.pointers[obj] then
-      return self
-   end
+    if self.pointers[obj] then
+        return self
+    end
 
-   local size = self.size + 1
+    local size = self.size + 1
 
-   self.view[size] = obj
-   self.pointers[obj] = size
-   self.size          = size
+    self.view[size] = obj
+    self.pointers[obj] = size
+    self.size          = size
 
-   if self.added then
-      self.view.added(obj) -- added callback
-   end
+    if self.added then
+        self.view.added(obj) -- added callback
+    end
 
-   return self
+    return self
 end
 
 
