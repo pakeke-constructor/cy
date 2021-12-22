@@ -3,7 +3,7 @@
 local path = (...):gsub("%.cy_entity", "")
 
 local groups = require(path..".cy_groups")
-local msgpack = require(path..".messagepack")
+local inspect = require(path..".inspect")
 
 local rembuffer = {} -- Where entities are put before destruction
 
@@ -18,6 +18,12 @@ local function err(ent, key, val)
     error(msg)
 end
 
+
+local function ent_tostring(ent)
+    local typename = ent.___type.___typename
+    local start = "[" .. tostring(typename) .. "] "
+    return start .. inspect(ent, {seen = ent.___type})
+end
 
 
 
@@ -74,16 +80,6 @@ end
 
 
 
-local function ent_serialize(ent)
-    return msgpack.serialize(ent)
-end
-
-
-local function ent_deserialize(etype, str)
-    local tabl = msgpack.unpack(str)
-    return new_ent_fromtable(etype, tabl)
-end
-
 
 
 local etype_mt = {
@@ -96,7 +92,7 @@ local typename_to_etype = {}
 
 local function new_etype(tabl, typename)
     assert(type(tabl) == "table", "etype should be table")
-    assert(type(name) == "string", "each entity needs a typename")
+    assert(type(typename) == "string", "each entity needs a typename")
 
     local dynamic_fields = {}
     local all_fields = {}
@@ -118,6 +114,7 @@ local function new_etype(tabl, typename)
     local ent_mt = {
         __index = parent;
         __newindex = err;
+        __tostring = ent_tostring;
         __metatable = "Entity metatables cannot be modified."
     }
 
@@ -127,7 +124,8 @@ local function new_etype(tabl, typename)
         ___groups = _groups,
         ___dynamic_fields = dynamic_fields,
         ___ent_mt = ent_mt,
-        ___typename = typename
+        ___typename = typename,
+        _template = dynamic_fields -- Binser uses this.
     }
     parent.___type = etype
 
@@ -147,13 +145,15 @@ return {
     construct   = new_etype;
     destruct    = del_etype;
 
-    serialize   = ent_serialize;
-    deserialize = ent_deserialize;
+--    serialize   = ent_serialize;
+--    deserialize = ent_deserialize; -- we aren't using these i dont think
     
     rembuffer   = rembuffer;
     addbuffer   = addbuffer;
 
     add_to_groups = add_to_groups;
+
+    typename_to_etype = typename_to_etype;
 
     true_delete = true_delete 
 }

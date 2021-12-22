@@ -18,7 +18,6 @@ local all = cy.get_entities()
 
 
 
-
 local apple = cy.entity({
     "a", "b",
     
@@ -54,8 +53,9 @@ local PLANES = 503
 
 assert(g_app:size() == 0, g_app:size())
 for i=1, APPLES do
-    apple()
+    local appl = apple()
 end
+
 assert(g_app:size() == 0, g_app:size())
 cy.flush()
 assert(g_app:size() == APPLES, g_app:size())

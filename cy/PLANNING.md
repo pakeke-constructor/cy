@@ -30,11 +30,12 @@ anything inside of <these> is data to be put into the file
 <cyan_version>
 
 >> ent_typename to char mapping:
->> (Saves us a bit of space and time.)
+>> (Saves us alot of space. If we don't have this, `binser` will write
+>>   every single entity name into each entity, which sucks!)
 <ent-typename__to__char-mapping>
 {
-    player = "\1";
-    enemy = "\2";
+    "\1" = "player";
+    "\2" = "enemy";
 }
 
 >> ent type definitions. This is done so we can check that ent implementations

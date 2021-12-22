@@ -657,7 +657,7 @@ local function newbinser()
         end
     end
 
-    -- Used to serialize classes withh custom serializers and deserializers.
+    -- Used to serialize classes with custom serializers and deserializers.
     -- If no _serialize or _deserialize (or no _template) value is found in the
     -- metatable, then the metatable is registered as a resources.
     local function register(metatable, name, serialize, deserialize)
@@ -713,7 +713,7 @@ local function newbinser()
         return metatable
     end
 
-    local function unregisterAll() -- PAKEKE MONKEYPATCH
+    local function unregisterAllClasses() -- PAKEKE MONKEYPATCH
         -- (This function doesn't exist in regular binser)
         for name, _ in pairs(mts) do
             unregister(name)
@@ -751,10 +751,13 @@ local function newbinser()
         appendFile = appendFile,
         register = register,
         unregister = unregister,
-        unregisterAll = unregisterAll, -- PAKEKE MONKEYPATCH
+        unregisterAll = unregisterAllClasses, -- PAKEKE MONKEYPATCH
         registerResource = registerResource,
         unregisterResource = unregisterResource,
         registerClass = registerClass,
+
+        number_to_str = number_to_str, -- PAKEKE MONKEYPATCH,
+        number_from_str = number_from_str, -- (BOTH OF THESE.)
 
         newbinser = newbinser
     }

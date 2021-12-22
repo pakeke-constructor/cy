@@ -3,6 +3,7 @@ local path = (...):gsub('%.[^%.]+$', '')
 
 local groups = require(path..".cy_groups")
 local entity = require(path..".cy_entity")
+local serialize = require(path..".cy_serialize")
 
 
 local cy = setmetatable({},{
@@ -22,7 +23,6 @@ function cy.clear() -- Clears all entities
 end
 
 
-function cy.
 
 
 function cy.flush()
@@ -41,8 +41,8 @@ function cy.flush()
 end
 
 
-function cy.entity(tabl) -- Creates a new entity
-    return entity.construct(tabl)
+function cy.entity(tabl, typename) -- Creates a new entity
+    return entity.construct(tabl, typename)
 end
 
 
@@ -53,12 +53,28 @@ end
 
 
 
-function cy.serialize(ent)
-    return entity.serialize(ent)
+function cy.serialize()
+    -- TODO: Make this function asynchronous.
+    -- i.e. you can call it multiple times to spread the load over multiple
+    -- frames.
+    --
+    -- IF YOU DO THIS, HOWEVER, WARNING :::
+    -- This functions should ABSOLUTELY NOT BE CALLED
+    -- WHEN THE WORLD IS STILL UPDATING !!!!
+    -- It will likely cause issues
+    return serialize.serialize()
 end
 
 function cy.deserialize(etype, data)
-    return entity.deserialize(etype, data)
+    --[[
+        TODO:
+
+        Make this function asynchronous too.
+        Like you can call it multiple times to spread the load over multiple
+        frames.
+        Also, you could add a loading bar :)
+    ]]
+    return serialize.deserialize()
 end
 
 
