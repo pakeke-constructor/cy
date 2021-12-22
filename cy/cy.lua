@@ -22,6 +22,9 @@ function cy.clear() -- Clears all entities
 end
 
 
+function cy.
+
+
 function cy.flush()
     local rembuffer = entity.rembuffer
     local true_delete = entity.true_delete

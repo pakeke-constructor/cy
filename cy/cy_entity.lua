@@ -20,6 +20,7 @@ end
 
 
 
+
 local insert = table.insert
 
 local function ent_delete(ent)
@@ -46,7 +47,7 @@ end
 
 
 
-local function new_ent(etype)
+local function new_ent(etype, name)
     local new = {} -- The entity
     
     for _,attr in ipairs(etype.___dynamic_fields) do
@@ -90,7 +91,13 @@ local etype_mt = {
 }
 
 
-local function new_etype(tabl)
+local typename_to_etype = {}
+
+
+local function new_etype(tabl, typename)
+    assert(type(tabl) == "table", "etype should be table")
+    assert(type(name) == "string", "each entity needs a typename")
+
     local dynamic_fields = {}
     local all_fields = {}
 
@@ -119,17 +126,26 @@ local function new_etype(tabl)
     local etype = {
         ___groups = _groups,
         ___dynamic_fields = dynamic_fields,
-        ___ent_mt = ent_mt
+        ___ent_mt = ent_mt,
+        ___typename = typename
     }
     parent.___type = etype
 
+    typename_to_etype[typename] = etype
+
     return setmetatable(etype, etype_mt)
+end
+
+
+local function del_etype(name)
+    typename_to_etype[name] = nil
 end
 
 
 
 return {
     construct   = new_etype;
+    destruct    = del_etype;
 
     serialize   = ent_serialize;
     deserialize = ent_deserialize;

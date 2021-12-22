@@ -27,7 +27,7 @@ local apple = cy.entity({
     spicy = false,
 
     type = "apple"
-})
+}, "apple")
 
 
 
@@ -37,14 +37,14 @@ local banana = cy.entity({
     color = "yellow",
 
     type = "banana"
-})
+}, "banana")
 
 
 local plane = cy.entity({
     "a", "p",
     color = "white",
     type = "plane"
-})
+}, "plane")
 
 
 

@@ -22,8 +22,8 @@ local bullet = cy.entity({
 
 
 
-local b1 = bullet() -- `bullet` is like a class;
-local b2 = bullet() -- here, we create 2 bullet ents, b1 and b2.
+local b1 = bullet() -- `bullet` is like a class.
+local b2 = bullet()
 
 
 local str = cy.serialize(b1) -- Serializes bullet
