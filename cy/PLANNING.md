@@ -12,7 +12,7 @@ Be initialized with a CTOR
 - hmm, should this be done by cy? We don't really need a ctor do we?
 
 
-
+#### EACH ENTITY SHOULD HAVE A `.id` FIELD!!!
 
 
 ### Serialization planning:
@@ -26,17 +26,68 @@ anything inside of <these> is data to be put into the file
 
 
 
+### ISSUE 1:
+We need to serialize ents, but we ALSO need to NOT serialize
+any nested entities!!!
+
+Okay:
+We could use serialization functions:
+`serialize` and `deserialize`.
+Put an upvalue flag outside each of the serialize functions that
+describes whether we should serialize by id or by the actual ent table.
+
+FOR ALL NESTED `serialize` CALLS, THIS FLAG MUST BE TRUE!!!!
+We don't want to serialize nested entities, we just want their ids.
+
+
+### ISSUE 2:
+Another issue:
+How do we distinguish ent ids from a number?
+AHA! We don't even need to, binser will do it for us if we register it as a 
+custom type.
+We either serialize as a `number` or a `table.` Since binser will always know
+if a type is a table or a number, we will know whether we serialized it as an
+id, (because its a number,) and we will know whether we serialized as a table.
+
+
+
+### ISSUE 3:
+binser may not recognise our entities because the metatable is protected.
+Uh oh....
+Do some checks on this! ^^^^^^^^
+this could be a hard to catch bug if we forget about it!
+
+
+
+
+
+
+
+
+
+### API:
+```lua
+
+local data = cy.start_serialize() -- serializes whole world
+
+local data = cy.poll_serialize(n)
+-- serializes a target amount of `n` bytes of data.
+
+-- If nil is returned, the serialization is complete.
+
+
+
+cy.start_deserialize(start_data)
+
+local keep_going = cy.poll_deserialize(data, n)
+-- serializes a maximum of `n` entities.
+-- returns `true` if there are still entities to serialize, false otherwise.
+
+
+```
+
 
 <cyan_version>
-
->> ent_typename to char mapping:
->> (Saves us alot of space. If we don't have this, `binser` will write
->>   every single entity name into each entity, which sucks!)
-<ent-typename__to__char-mapping>
-{
-    "\1" = "player";
-    "\2" = "enemy";
-}
 
 >> ent type definitions. This is done so we can check that ent implementations
 >> are consistent across different versions.
@@ -60,8 +111,6 @@ anything inside of <these> is data to be put into the file
     enemy = {
         "target", "pos", "vel", "hp"
     };
-
-
 }
 
 

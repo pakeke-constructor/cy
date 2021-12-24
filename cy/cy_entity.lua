@@ -5,6 +5,11 @@ local path = (...):gsub("%.cy_entity", "")
 local groups = require(path..".cy_groups")
 local inspect = require(path..".inspect")
 
+local assert = assert
+local max = math.max
+
+
+
 local rembuffer = {} -- Where entities are put before destruction
 
 local addbuffer = {} -- Where entities are put before being added to groups
@@ -19,11 +24,45 @@ local function err(ent, key, val)
 end
 
 
+
 local function ent_tostring(ent)
     local typename = ent.___type.___typename
     local start = "[" .. tostring(typename) .. "] "
     return start .. inspect(ent, {seen = ent.___type})
 end
+
+
+
+
+
+-- Ent ids   START 
+local highest_id = 1
+local id_buffer = {len = 0} -- a list of available ent ids.
+
+local function clear_ids()
+    highest_id = 1
+    id_buffer = {len = 0}
+end
+
+local function remove_id(id)
+    assert(id)
+    local len = id_buffer.len + 1
+    id_buffer[len] = id
+end
+
+local function get_id()
+    if id_buffer.len > 0 then
+        local id = id_buffer[id_buffer.len]
+        id_buffer[id_buffer.len] = nil
+        id_buffer.len = id_buffer.len - 1
+        return id
+    end
+
+    highest_id = highest_id + 1
+    return highest_id
+end
+-- Ent ids END
+
 
 
 
@@ -35,10 +74,12 @@ end
 
 local function true_delete(ent)
     local groups_ = ent.___type.___groups
+    remove_id(ent.id)
     for i=1, #groups_ do
         groups_[i]:remove(ent)
     end
 end
+
 
 
 
@@ -53,6 +94,7 @@ end
 
 
 
+
 local function new_ent(etype, name)
     local new = {} -- The entity
     
@@ -60,6 +102,7 @@ local function new_ent(etype, name)
         new[attr] = false -- Dynamic attrs default to false.
     end
     
+    new[id] = get_id()
     setmetatable(new, etype.___ent_mt)
 
     table.insert(addbuffer, new)
@@ -69,7 +112,13 @@ local function new_ent(etype, name)
 end
 
 
-local function new_ent_fromtable(etype, new)    
+local function new_ent_fromtable(etype, new)
+    if not new[id] then
+        new[id] = get_id()
+    else
+        highest_id = max(highest_id, new[id])
+    end
+
     setmetatable(new, etype.___ent_mt)
 
     table.insert(addbuffer, new)
@@ -98,14 +147,22 @@ local function new_etype(tabl, typename)
     local all_fields = {}
 
     for i=1, #tabl do
-        table.insert(dynamic_fields, tabl[i])
-        table.insert(all_fields, tabl[i])
+        local dyn_field = tabl[i]
+        if dyn_field == "id" then
+            error("Entities cannot have a .id member!") -- TODO: push this error up the stack.
+        end
+        table.insert(dynamic_fields, dyn_field)
+        table.insert(all_fields, dyn_field)
     end
 
     local parent = {}
     for key, value in pairs(tabl) do 
         -- Don't care about JIT breaking; 
         -- this is only for entity type initialization.
+        if key == "id" then
+            error("Entities cannot have a .id member!") -- TODO: push this error up the stack.
+        end
+
         table.insert(all_fields, key)
         parent[key] = value
     end
@@ -115,7 +172,7 @@ local function new_etype(tabl, typename)
         __index = parent;
         __newindex = err;
         __tostring = ent_tostring;
-        __metatable = "Entity metatables cannot be modified."
+        __metatable = "Entity metatables cannot be modified or viewed."
     }
 
     local _groups = groups._get_groups(all_fields)
@@ -141,6 +198,40 @@ end
 
 
 
+
+local is_serializing = false
+
+local function make_custom_serialize(etype)
+    local dyn_fields = etype.___dynamic_fields
+    local len_df = #dyn_fields
+
+    return function(ent, only_reference)
+        if is_serializing or only_reference then
+            -- Its a nested entity! Serialize the id.
+            return binser.serialize(ent.id)
+        else
+            -- We are serializing the whole entity as a table...
+            -- here we go...
+            is_serializing = true
+            binser.serialize() ??-- hmm what do we do here
+            is_serializing = false
+        end
+    end
+end
+
+
+local function make_custom_deserialize(etype)
+    
+    return function(data)
+
+    end
+end
+
+
+
+
+
+
 return {
     construct   = new_etype;
     destruct    = del_etype;
@@ -155,7 +246,9 @@ return {
 
     typename_to_etype = typename_to_etype;
 
-    true_delete = true_delete 
+    true_delete = true_delete;
+
+    clear_ids = clear_ids
 }
 
 

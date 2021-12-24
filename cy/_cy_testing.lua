@@ -54,6 +54,7 @@ local PLANES = 503
 assert(g_app:size() == 0, g_app:size())
 for i=1, APPLES do
     local appl = apple()
+    print(appl)
 end
 
 assert(g_app:size() == 0, g_app:size())

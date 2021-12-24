@@ -21,8 +21,6 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ]]
 
-
-
 local assert = assert
 local error = error
 local select = select
@@ -220,12 +218,13 @@ local function newbinser()
     -- INT64 = 212
     -- TABLE WITH META = 213
 
-    local mts = {}
-    local ids = {}
-    local serializers = {}
-    local deserializers = {}
-    local resources = {}
-    local resources_by_name = {}
+    local mts = {} -- [name] => metatable
+    local ids = {} -- [metatable] => name
+    local serializers = {}  -- [name] => serialize function
+    local deserializers = {} -- [name] => deserialize function 
+    local resources = {} -- [resource] => name
+    local resources_by_name = {} -- [name] => resource
+
     local types = {}
 
     types["nil"] = function(x, visited, accum)
@@ -463,6 +462,21 @@ local function newbinser()
         return concat(accum)
     end
 
+    local function serializeTable(tabl, start_i, count)
+        -- PAKEKE MONKEYPATCH
+        -- allows for serialization of a table.
+        local visited = {[NEXT] = 1, [CTORSTACK] = {}}
+        local accum = {}
+        for i=start_i, start_i + count do
+            local x = tabl[i]
+            if not x then
+                break
+            end
+            types[type(x)](x, visited, accum)
+        end
+        return concat(accum)
+    end
+
     local function make_file_writer(file)
         return setmetatable({}, {
             __newindex = function(_, _, v)
@@ -657,7 +671,7 @@ local function newbinser()
         end
     end
 
-    -- Used to serialize classes with custom serializers and deserializers.
+    -- Used to serialize classes withh custom serializers and deserializers.
     -- If no _serialize or _deserialize (or no _template) value is found in the
     -- metatable, then the metatable is registered as a resources.
     local function register(metatable, name, serialize, deserialize)
@@ -697,12 +711,15 @@ local function newbinser()
     local function unregister(item)
         local name, metatable
         if type(item) == "string" then -- assume name
-            name, metatable = item, mts[item]
-        else -- assume metatable
-            name, metatable = ids[item], item
+            -- PAKEKE MONKEYPATCH (FIX BUG)
+            name, metatable = item, mts[item] or resources_by_name[item]
+        else -- assume item is metatable
+            -- PAKEKE MONKEYPATCH (FIX BUG)
+            name, metatable = ids[item] or resources[item], item
         end
         type_check(name, "string", "name")
         mts[name] = nil
+        
         if (metatable) then
             resources[metatable] = nil
             ids[metatable] = nil
@@ -711,16 +728,6 @@ local function newbinser()
         deserializers[name] = nil
         resources_by_name[name] = nil;
         return metatable
-    end
-
-    local function unregisterAllClasses() -- PAKEKE MONKEYPATCH
-        -- (This function doesn't exist in regular binser)
-        for name, _ in pairs(mts) do
-            unregister(name)
-        end
-        for _, name in pairs(ids) do
-            unregister(name)
-        end
     end
 
     local function registerClass(class, name)
@@ -745,19 +752,16 @@ local function newbinser()
 
         serialize = serialize,
         deserialize = deserialize,
+        serializeTable = serializeTable
         deserializeN = deserializeN,
         readFile = readFile,
         writeFile = writeFile,
         appendFile = appendFile,
         register = register,
         unregister = unregister,
-        unregisterAll = unregisterAllClasses, -- PAKEKE MONKEYPATCH
         registerResource = registerResource,
         unregisterResource = unregisterResource,
         registerClass = registerClass,
-
-        number_to_str = number_to_str, -- PAKEKE MONKEYPATCH,
-        number_from_str = number_from_str, -- (BOTH OF THESE.)
 
         newbinser = newbinser
     }

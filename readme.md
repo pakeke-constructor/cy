@@ -18,7 +18,8 @@ local bullet = cy.entity({
 
     image = "bullet", -- These are constant, shared entity attributes
     damage = 40 -- (Like static members in C# or Java.)
-})
+}, "bullet") 
+-- a name for the ent type is compulsory!
 
 
 

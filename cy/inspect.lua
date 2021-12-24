@@ -307,19 +307,7 @@ local inspect ={
     local newline = options.newline or '\n'
     local indent  = options.indent  or '  '
     local process = options.process
-    
-    local ids-- PAKEKE MONKEYPATCH
-    local maxIds = {}
-    if options.seen then 
-        ids = options.seen
-        for k,v in pairs(options.seen) do
-            local key = type(k)
-            maxIds[key] = (maxIds[key] or 0) + 1
-        end
-    else
-        ids = {}
-    end -- END MONKEYPATCH.
-  
+
     if process then
       root = processRecursive(process, root, {}, {})
     end
@@ -328,8 +316,8 @@ local inspect ={
       depth            = depth,
       level            = 0,
       buffer           = {},
-      ids              = ids, -- PAKEKE MONKEYPATCH (used to be {})
-      maxIds           = maxIds, -- PAKEKE MONKEYPATCH (used to be {})
+      ids              = {},
+      maxIds           = {},
       newline          = newline,
       indent           = indent,
       tableAppearances = countTableAppearances(root)
@@ -343,4 +331,3 @@ local inspect ={
   setmetatable(inspect, { __call = function(_, ...) return inspect.inspect(...) end })
   
   return inspect
-  

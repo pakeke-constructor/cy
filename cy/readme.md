@@ -2,7 +2,7 @@
 # cy
 
 Hybrid OOP / Entity-Component-System framework,
-designed for easy and speedy
+designed for fast, asynchronous
 serialization and better workings with networking.
 
 The successor of [Cyan.](https://github.com/pakeke-constructor/Cyan)

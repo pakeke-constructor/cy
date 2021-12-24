@@ -5,6 +5,7 @@ local binser = require(path..".binser")
 local entity = require(path..".cy_entity")
 local groups = require(path..".cy_groups")
 
+local coroutine = coroutine
 
 
 local SERIALIZATION_VERSION = 1
@@ -48,11 +49,10 @@ local floor = math.floor
 
 
 local function squash(i)
-    assert(i > 0 and i < 0x10000,
-[[too many entity types to fit into our registry....
-this is really bad, there are more than 65536 entity types...]])
+    assert(i > 0 and i < 0x1000000, "[cy_serialize.squash error] umm... this is an odd error. Please contact Oli")
 
     return char(
+        floor(x / 0x1000000) % 0x100,
         floor(x / 0x10000) % 0x100,
         floor(x / 0x100) % 0x100,
         x % 0x100
@@ -86,8 +86,9 @@ end
 
 
 
-local function serialize_entities(typename_arr)
+local function serialize_entities(start_i, n)
     local ent_arr = groups.all.view
+    return start_i + n, binser.serializeTable(groups.)
     return binser.s(ent_arr)
 end
 
@@ -132,15 +133,8 @@ end
 ===
 ===
 ===
-Here we go.... hopefully this isn't too much of a mess.
 --]]
 
-
-
-local function deserialize_char_mapping(data, start_i)
-    local chr_mapping, next_i = binser.deserialize(data, start_i)
-    return chr_mapping, next_i
-end
 
 
 local function deserialize_registry(data, start_i)
@@ -151,18 +145,57 @@ local function deserialize_registry(data, start_i)
         mis-match.
     ]]
     local registry, next_i = binser.deserialize(data, start_i)
-    return registry, next_i
+    if not registry then
+        return nil, next_i
+    end
+
+    local typename_to_badfields = { 
+        -- fields that need to be removed for each etype.
+        -- I.e, if a serialized ent had extra unused fields, this table tags them
+        -- for removal.
+
+        -- [typename] : {field_list}
+    }
+
+    for typename, dynamic_fields in pairs(registry) do
+        local bad_fields = {}
+        local exists = {}
+        local our_dyn_fields = entity.typename_to_etype[typename].___dynamic_fields
+        for i=1, #(our_dyn_fields) do
+            local f = our_dyn_fields[i]
+            exists[f] = true
+        end
+
+        for i=1, #dynamic_fields do
+            local fld = dynamic_fields[i]
+            if not exists[fld] then
+                table.insert(bad_fields, fld)
+            end
+        end
+
+        typename_to_badfields[typename] = bad_fields
+    end
+
+    return registry, next_i, typename_to_badfields
 end
 
 
 
+local yield = coroutine.yield
 
-function s.deserialize_world(data, start_i, count)
+
+local buffer = {}
+local version = {}
+
+function s.start_deserialize()
+
+end
+
+function s.deserialize_header(data, start_i)
     local i = start_i
 
     -- make sure to use pcall here
     local version, i = pcall(binser.deserialize, data, i)
-    
     if not version then
         return nil, i
     end
@@ -170,15 +203,12 @@ function s.deserialize_world(data, start_i, count)
         return nil, "cy serialization versions are different. Is your game updated?"
     end
 
-    local typename_to_chr, i = pcall(deserialize_char_mapping, data, i)
-    if not typename_to_chr then
-        return nil, i
-    end
-
-    local registry, i = pcall(deserialize_registry, data, i)
+    local registry, i = pcall(deserialize_registry, data, i, typename_to_chr)
     if not registry then
         return nil, i
     end
+
+    return 
 end
 
 
