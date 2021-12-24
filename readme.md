@@ -2,7 +2,7 @@
 # cy
 
 Hybrid OOP / Entity-Component-System framework,
-designed for easy and speedy
+designed for fast, asynchronous
 serialization and better workings with networking.
 
 The successor of [Cyan.](https://github.com/pakeke-constructor/Cyan)
@@ -18,13 +18,12 @@ local bullet = cy.entity({
 
     image = "bullet", -- These are constant, shared entity attributes
     damage = 40 -- (Like static members in C# or Java.)
-}, "bullet") 
--- a name for the ent type is compulsory!
+})
 
 
 
-local b1 = bullet() -- `bullet` is like a class.
-local b2 = bullet()
+local b1 = bullet() -- `bullet` is like a class;
+local b2 = bullet() -- here, we create 2 bullet ents, b1 and b2.
 
 
 local str = cy.serialize(b1) -- Serializes bullet

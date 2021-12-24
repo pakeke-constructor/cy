@@ -155,6 +155,9 @@ local function new_etype(tabl, typename)
         table.insert(all_fields, dyn_field)
     end
 
+    table.sort(dynamic_fields) -- keep field ordering consistent
+    table.sort(all_fields)
+
     local parent = {}
     for key, value in pairs(tabl) do 
         -- Don't care about JIT breaking; 
@@ -181,8 +184,7 @@ local function new_etype(tabl, typename)
         ___groups = _groups,
         ___dynamic_fields = dynamic_fields,
         ___ent_mt = ent_mt,
-        ___typename = typename,
-        _template = dynamic_fields -- Binser uses this.
+        ___typename = typename
     }
     parent.___type = etype
 
@@ -222,9 +224,9 @@ end
 
 local function make_custom_deserialize(etype)
     
-    return function(data)
+return function(data)
 
-    end
+end
 end
 
 
