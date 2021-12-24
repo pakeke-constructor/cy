@@ -217,6 +217,8 @@ local CTORSTACK = {}
 -- RESOURCE = 211
 -- INT64 = 212
 -- TABLE WITH META = 213
+-- CY_ENTITY = 214  --( PAKEKE MONKEYPATCH )
+
 
 local mts = {} -- [name] => metatable
 local ids = {} -- [metatable] => name
@@ -671,7 +673,7 @@ local function template_serializer_and_deserializer(metatable, template)
     end
 end
 
--- Used to serialize classes withh custom serializers and deserializers.
+-- Used to serialize classes with custom serializers and deserializers.
 -- If no _serialize or _deserialize (or no _template) value is found in the
 -- metatable, then the metatable is registered as a resources.
 local function register(metatable, name, serialize, deserialize)

@@ -36,11 +36,11 @@ end
 
 
 -- Ent ids   START 
-local highest_id = 1
+local highest_id = 0 -- The first end id will be 1.
 local id_buffer = {len = 0} -- a list of available ent ids.
 
 local function clear_ids()
-    highest_id = 1
+    highest_id = 0
     id_buffer = {len = 0}
 end
 
@@ -102,7 +102,7 @@ local function new_ent(etype, name)
         new[attr] = false -- Dynamic attrs default to false.
     end
     
-    new[id] = get_id()
+    new.id = get_id()
     setmetatable(new, etype.___ent_mt)
 
     table.insert(addbuffer, new)
@@ -215,7 +215,7 @@ local function make_custom_serialize(etype)
             -- We are serializing the whole entity as a table...
             -- here we go...
             is_serializing = true
-            binser.serialize() ??-- hmm what do we do here
+            -- binser.serialize() ??-- hmm what do we do here
             is_serializing = false
         end
     end
@@ -224,9 +224,9 @@ end
 
 local function make_custom_deserialize(etype)
     
-return function(data)
+    return function(data)
 
-end
+    end
 end
 
 

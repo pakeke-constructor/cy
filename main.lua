@@ -5,6 +5,12 @@ setmetatable(_G,{
     __newindex = function(t,k) error("attempt to create global: "..tostring(k)) end
 })
 
+
+
+require("_testfile")
+
+do return end
+
 require("cy._cy_testing")
 
 

@@ -49,7 +49,8 @@ We either serialize as a `number` or a `table.` Since binser will always know
 if a type is a table or a number, we will know whether we serialized it as an
 id, (because its a number,) and we will know whether we serialized as a table.
 
-
+-->> Issue with this solution:
+References are not 
 
 ### ISSUE 3:
 binser may not recognise our entities because the metatable is protected.
