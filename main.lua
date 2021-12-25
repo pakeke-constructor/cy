@@ -6,11 +6,6 @@ setmetatable(_G,{
 })
 
 
-
-require("_testfile")
-
-do return end
-
 require("cy._cy_testing")
 
 

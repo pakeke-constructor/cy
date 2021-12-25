@@ -195,16 +195,18 @@ local AM = 0xffffff
 
 timeit(function()
 for i=1, AM do
-    x = (x + number_from_str(number_to_str(i), 1)) % 5000
+    x = (x + number_from_str(number_to_str(i % 100), 1)) % 5000
 end
 end, "binser")
 
 
 x = 0
 local pack, unpack = love.data.pack, love.data.unpack
+
+local format = ">!1I2"
 timeit(function()
 for i=1, AM do
-    x = (x + (unpack("I8", pack("string","I8", i)))) % 5000
+    x = (x + (unpack(format, pack("string",format, i % 100)))) % 5000
 end
 end, "pack unpack")
 
