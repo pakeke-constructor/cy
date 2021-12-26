@@ -20,6 +20,7 @@ function cy.clear() -- Clears all entities
         ent = all[i]
         ent:delete()        
     end
+    cy.flush() -- force flush
 end
 
 

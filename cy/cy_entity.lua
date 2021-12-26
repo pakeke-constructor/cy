@@ -201,39 +201,6 @@ end
 
 
 
-local is_serializing = false
-
-local function make_custom_serialize(etype)
-    local dyn_fields = etype.___dynamic_fields
-    local len_df = #dyn_fields
-
-    return function(ent, only_reference)
-        if is_serializing or only_reference then
-            -- Its a nested entity! Serialize the id.
-            return binser.serialize(ent.id)
-        else
-            -- We are serializing the whole entity as a table...
-            -- here we go...
-            is_serializing = true
-            -- binser.serialize() ??-- hmm what do we do here
-            is_serializing = false
-        end
-    end
-end
-
-
-local function make_custom_deserialize(etype)
-    
-    return function(data)
-
-    end
-end
-
-
-
-
-
-
 return {
     construct   = new_etype;
     destruct    = del_etype;

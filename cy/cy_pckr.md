@@ -1,11 +1,11 @@
 
-# cy_ser
+# cy_pckr
 
 Cy custom serialization.
 I didn't want to have to do this...
 
 
-### SER PLANNING::::
+### PCKR PLANNING::::
 Use love.data.pack  AND  love.data.unpack for numbers.
 It's twice as faster as binser!  (benchmarked it.)
 Note that you will also have to use pcall for this too, though.
@@ -55,35 +55,36 @@ This is how we want `ser` to be used:
 ```lua
 
 -- adds a resource (same as `binser`)
-ser.resource(resource, name)
+pckr.resource(resource, name)
 
 
 
-ser.register_type(metatable, name)
+pckr.register_type(metatable, name)
 
-ser.unregister_type(metatable, name)
+pckr.unregister_type(metatable, name)
 
 
 -- sets a template for type keys, so it can be flattened.
-ser.add_template(vector_metatable, {"x", "y", "z"})
+pckr.add_template(vector_metatable, {"x", "y", "z"})
+-- (NOTE: These can't be nested, like binser!)
 
 
 
 
 
 
-ser.clear() -- clears resources, and stops any 
+pckr.clear() -- clears resources, and stops any 
 -- serialization or deserialization that is currently happening.
 
 
 
 -- Simple instant deserialization and serialization
-local data = ser.serialize(a, b, c, d, e)
-local a, b, c, d, e = ser.deserialize(data)
+local data = pckr.serialize(a, b, c, d, e)
+local a, b, c, d, e = pckr.deserialize(data)
 
 
 
-local poller, data = ser.serialize_async()
+local poller, data = pckr.serialize_async()
 -- gets an async serialization object.
 
 local data = poller:serialize(max_bytes, ...)
@@ -92,7 +93,7 @@ local data = poller:serialize(max_bytes, ...)
 
 
 
-local reader, err = ser.deserialize_async(start_data)
+local reader, err = pckr.deserialize_async(start_data)
 -- If it cannot deserialize, `reader` is nil, and error msg is returned.
 
 local data, err = reader:deserialize(data)
