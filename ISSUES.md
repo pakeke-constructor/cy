@@ -26,4 +26,63 @@ for id=1, cy.get_max_id() do
         serialize(id) ... you get the idea
     end
 end
+```
+
+
+
+ISSUE of nested entities getting in way of packet syncing:
+This is gonna be hard to explain:::
+Imagine that we want to serialize entities *greedily.*
+I.e, we serialize all nested entities recursively, up to an unspecified depth.
+This could work OK!  The issue however- is that we will be half-done serializing
+many entities further up the call stack.
+And if we are half-done serializing a lot of entities, there is a good chance
+that those entities could become outdated if the serialization sending is done
+over multiple frames.                       
+(Because obviously, an entity can't be used if its only half-serialized!!!)
+
+PROPOSED SOLUTION:  If the `pckr` serialization depth is greater than 1,
+don't serialize the entity- rather serialize a `FUTURE_REF` to the entity.
+(NOTE: This will mean that you will have to add some new functionality to define
+how future_refs behave; you'll have to add something like `pckr.add_template`,
+except for future refs.
+
+
+
+
+
+
+
+ISSUE of out-syncing on initialize w/ lazy entity updating:
+During serialization, we have 2 types of entities: `ready ents`, 
+and `expected ents`.  "ready ents" are entities that have been fully recieved;
+we are listening for updates to them. `expected ents` are ones that we have
+yet to recieve, (but they may already be tagged via FUTURE REFs.)
+----------->
+The issue is if a `ready ent` field is updated to a value inside an 
+`expected ent`. We won't be able to determine what to set the ready ent's 
+field to, because the expected ent has not been recieved!!!!
+EXAMPLE:
+```lua
+-- Server side:
+server:broadcast("some_event", 
+    e1, -- lets say on client side, `e1` is has been recieved, (ready)
+    e2 -- but e2 has not been sent yet. (expected)
+) 
+
+-- Client side:
+client:on("some_event", function(e1, e2)
+    e1.x = e2.x -- CRAP! This is terrible:
+    -- e2 does not exist yet!!! at the moment, its a FUTURE_REF.
+end)
+```
+
+PROPOSED SOLUTION:
+TODO:
+No solution here I don't think; this is probably unsolveable.
+The best we can do is just to encourage modders to not mutate entity state
+outside of direct ent update broadcasts.
+--> BUT KEEP THINKING OF POTENTIAL SOLUTIONS!!!
+
+
 

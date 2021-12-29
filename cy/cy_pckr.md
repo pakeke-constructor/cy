@@ -84,10 +84,10 @@ local a, b, c, d, e = pckr.deserialize(data)
 
 
 
-local poller, data = pckr.serialize_async()
+local buffer = pckr.serialize_async()
 -- gets an async serialization object.
 
-local data = poller:serialize(max_bytes, ...)
+local data = buffer:serialize(max_bytes, ...)
 -- serializes a target amount of `max_bytes` bytes of data.
 -- If nil is returned, the serialization is complete.
 

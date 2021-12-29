@@ -10,8 +10,6 @@ local setmetatable = setmetatable
 
 local type = type
 local concat = table.concat
-local sub = string.sub
-local floor = math.floor
 
 local unpack = love.data.unpack
 local pack = love.data.pack
@@ -19,12 +17,17 @@ local pack = love.data.pack
 local abs = math.abs
 local max = math.max
 local min = math.min
+local floor = math.floor
+
+local byte = string.byte
+local char = string.char
+local sub = string.sub
 
 local pcall = pcall
 
 
 
-local USMALL = "\230" -- there is another u8 following this. 
+local USMALL = "\230" -- there is another uint8 following this. 
 -- This means that `usmall` can be between 0 - 58880, and only take up 2 bytes!
 local MAX_USMALL = 58880
 
@@ -42,13 +45,12 @@ local NIL   = "\243"
 local TRUE  = "\244"
 local FALSE = "\245"
 
-local STR = "\246"
+local STRING = "\246"
 
+local CUSTOM_TYPE = "\247" -- (type_name,  table // flat-table // array )
 
 local ARRAY   = "\248" -- (flat table data)
 local TABLE   = "\249" -- (table data; must use `pairs` to serialize)
-
-
 local FLAT_TABLE  = "\250"  --(flat table data)
 
 local TABLE_END = "\251" -- NULL terminator for tables.
@@ -94,38 +96,55 @@ local serializers = {}
 local deserializers = {}
 
 
+local mt_to_name = {} -- metatable --> name_str
 local name_to_mt = {} -- name_str --> metatable
 local mt_to_template = {} -- metatable --> template
+local mt_to_arraybool = {} -- metatable --> is array? (boolean)
 
 
 function pckr.register_type(metatable, name)
     assert(not name, "Duplicate registered type: " .. tostring(name))
     name_to_mt[name] = metatable
+    mt_to_name[metatable] = name
 end
+
 
 function pckr.unregister_type(metatable, name)
     local mt = name_to_mt[name]
     name_to_mt[name] = nil
     if mt then
+        mt_to_name[mt] = nil
+
         mt_to_template[mt] = nil
+        mt_to_arraybool[mt] = nil
     end
 end
 
 
 function pckr.unregister_all()
     name_to_mt = {}
+    mt_to_name = {}
     mt_to_template = {}
+    mt_to_arraybool = {}
 end
 
 
 function pckr.register_template(name_or_mt, template)
     -- Templates must be registered the same!
+    local mt = name_or_mt
+    if type(name_or_mt) == "string" then
+        mt = name_to_mt[name_or_mt] -- assume `name_or_mt` is name
+    end
+    mt_to_template[mt] = template
+end
 
-    local mt
-    if type(name_or_mt) == "table" then
-        mt = name_to_mt[name_or_mt]
-    else
-        mt = name_or_mt -- assume `name_or_mt` is the metatable itself.
+
+
+function pckr.register_array(name_or_mt)
+    -- registers the given metatable as an array type
+    local mt = name_or_mt
+    if type(name_or_mt) == "string" then 
+        mt = name_to_mt[name_or_mt] -- assume `name_or_mt` is name
     end
     mt_to_template[mt] = template
 end
@@ -141,18 +160,15 @@ local function add_reference(buffer, x)
 end
 
 
-local function push(buffer, x)
-    -- pushes `x` onto the buffer
-    local newlen = buffer.len + 1
-    buffer[newlen] = x
-    buffer.len = newlen
-end
 
 
-local function push_ref(buffer, ref_num)
-    push(buffer, REF)
-    serializers.number(buffer, ref_num)
-end
+
+
+
+
+
+
+
 
 
 
@@ -162,9 +178,41 @@ Serializers:
 
 ]]
 
+
+local function push(buffer, x)
+    -- pushes `x` onto the buffer
+    local newlen = buffer.len + 1
+    buffer[newlen] = x
+    buffer.len = newlen
+end
+
+local function push_ref(buffer, ref_num)
+    push(buffer, REF)
+    serializers.number(buffer, ref_num)
+end
+
+
+local function serialize_raw(x)
+    push(buffer, TABLE)
+    for k,v in pairs(x) do
+        serialize[type(k)](k)
+        serialize[type(v)](v)
+    end
+    push(buffer, TABLE_END)
+end
+
+
 local function serialize_with_meta(x, meta)
-    -- serializes table with meta
+    local is_array = mt_to_template[meta] -- whether `x` is an array or not.
+    local name = mt_to_name[meta]
+
+    -- TODO TODO TODO:::: This is unfinished.
+    -- We haven't even properly planned how to put the tags for this!!!!
+    -- Maybe do something like:
+    -- CUSTOM_TYPE [type_str]  FLAT_TABLE [flat table data]  ARRAY [array data] END
+    -- Or, if there is no ARRAY part, don't have an ARRAY tag.
     if mt_to_template[meta] then
+        push(buffer, FLAT_TABLE)
         local template = mt_to_template[meta]
         for i=1, #template do
             local k = template[i]
@@ -172,51 +220,22 @@ local function serialize_with_meta(x, meta)
             serializers[type(val)](val)
         end
         push(buffer, TABLE_END)
-        serializers[type(meta)](meta)
+        assert(type(meta) == "table", "`meta` not a table..?")
+        serializers.table(meta)
     else
         -- gonna have to serialize normally, oh well
+        serialize_raw(x)
+        serializers.table(meta)
     end
 end
 
-local function is_array_key(k)
-    if (type(k) == "number") and (k > 0) then
-        return k
-    end
-end
-
-local function serialize_raw(x)
-    ---- serializes raw table
-    -- TODO: Do array serializations for this maybe
-    --[[
-    local is_array = true
-    local len_array = 0
-    local max_array_key = 0
-    ]]
-    push(buffer, TABLE)
-
-    for k,v in pairs(x) do
-        --[[
-        if is_array then
-            local isa = is_array_key(k)
-            if isa then
-                len_array = len_array + 1
-                max_array_key = max(isa, max_array_key)
-            end
-        end
-        ]]
-        serialize[type(k)](k)
-        serialize[type(v)](v)
-    end
-
-    push(buffer, TABLE_END)
-end
 
 
 function serializers.table(buffer, x)
     if buffer.refs[x] then
         push_ref(buffer, buffer.refs[x])
     else
-        -- okay: How are we going to do this?
+        add_reference(buffer, x)
         local meta = getmetatable(x)
         if meta then
             serialize_with_meta(x, meta)
@@ -226,11 +245,9 @@ function serializers.table(buffer, x)
     end
 end
 
-
 serializers["nil"] = function(buffer, x)
     push(buffer, NIL)
 end
-
 
 
 -- Number serialization:
@@ -240,32 +257,39 @@ local sU64, dU64 = get_ser_funcs("I8")
 local sI16, dI16 = get_ser_funcs("i2") -- lowercase `i` is signed.
 local sI32, dI32 = get_ser_funcs("i4")
 local sI64, dI64 = get_ser_funcs("i8")
+local sN, dN = get_ser_funcs("n")
 
 function serializers.number(buffer, x)
-    if x > 0 then
-        -- serialize unsigned
-        if x < MAX_USMALL then
-            push(buffer, sUSMALL(x))
-        elseif x < (2^32 - 1) then
-            push(buffer, U32)
-            push(buffer, sU32(x))
-        else -- x is U64
-            push(buffer, U64)
-            push(buffer, sU64(x))
+    if floor(x) == x then
+        -- then is integer
+        if x > 0 then
+            -- serialize unsigned
+            if x < MAX_USMALL then
+                push(buffer, sUSMALL(x))
+            elseif x < (2^32 - 1) then
+                push(buffer, U32)
+                push(buffer, sU32(x))
+            else -- x is U64
+                push(buffer, U64)
+                push(buffer, sU64(x))
+            end
+        else
+            -- serialize signed
+            local mag = abs(x)
+            if mag < ((2^15) - 2) then -- 16 bit signed num.
+                push(buffer, I16)
+                push(buffer, sI16(x))
+            elseif mag < (2 ^ 31 - 2) then -- 32 bit signed num
+                push(buffer, I32)
+                push(buffer, sI32(x))
+            else
+                push(buffer, I64) -- else its 64 bit.
+                push(buffer, sI64(x))
+            end
         end
     else
-        -- serialize signed
-        local mag = abs(x)
-        if mag < ((2^15) - 2) then -- 16 bit signed num.
-            push(buffer, I16)
-            push(buffer, sI16(x))
-        elseif mag < (2 ^ 31 - 2) then -- 32 bit signed num
-            push(buffer, I32)
-            push(buffer, sI32(x))
-        else
-            push(buffer, I64) -- else its 64 bit.
-            push(buffer, sI64(x))
-        end
+        push(buffer, NUMBER)
+        push(buffer, sN(x))
     end
 end
 
@@ -274,12 +298,51 @@ function serializers.string(buffer, x)
     if buffer.refs[x] then
         push_ref(buffer, buffer.refs[x])
     else
-        push(buffer, string)
+        push(buffer, STRING)
         push(buffer, x)
         push(buffer, "\0") -- remember to push null terminator!
+        -- TODO: Is this null terminator needed? Do testing
         add_reference(buffer, x)
     end
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+--[[
+
+deserializers
+
+]]
+
+local function poll(reader, )
+
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -289,6 +352,13 @@ local function newbuffer()
         refs = {count = 0} -- count = the number of references.
     }
     return buffer
+end
+
+
+local function newreader()
+    local reader = {
+        
+    }
 end
 
 
@@ -302,5 +372,7 @@ function pckr.serialize(...)
     end
     return concat(buffer)
 end
+
+
 
 
