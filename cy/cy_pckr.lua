@@ -30,31 +30,36 @@ local pcall = pcall
 local USMALL = "\230" -- there is another uint8 following this. 
 -- This means that `usmall` can be between 0 - 58880, and only take up 2 bytes!
 local MAX_USMALL = 58880
+local USMALL_NUM = 230
 
-local I16 = "\237"
-local I32 = "\238"
-local I64 = "\239"
 
-local U32 = "\240"
-local U64 = "\241"
+-- local I16 = "\237" -- Don't serialize I16s, it will just waste time;
+        -- we already have USMALL which covers most of the I16.
 
-local NUMBER = "\242"
+local I32 = "\234"
+local I64 = "\235"
 
-local NIL   = "\243"
+local U32 = "\236"
+local U64 = "\237"
 
-local TRUE  = "\244"
-local FALSE = "\245"
+local NUMBER = "\238"
 
-local STRING = "\246"
+local NIL   = "\239"
 
-local CUSTOM_TYPE = "\247" -- (type_name,  table // flat-table // array )
+local TRUE  = "\240"
+local FALSE = "\215"
+
+local STRING = "\242"
+local STRING_REF_LEN = 3 -- strings must be at least 3 chars long 
+                        -- to be counted as a reference.
+
+local TABLE_WITH_META = "\247" -- (type_name,  table // flat-table // array )
 
 local ARRAY   = "\248" -- (flat table data)
 local TABLE   = "\249" -- (table data; must use `pairs` to serialize)
 local FLAT_TABLE  = "\250"  --(flat table data)
 
 local TABLE_END = "\251" -- NULL terminator for tables.
--- TODO: Do we need this? Surely we could terminate with `nil` instead.
 
 local BYTEDATA  = "\252" -- (A love2d ByteData; requires special attention with .unpack)
 
@@ -202,14 +207,31 @@ local function serialize_raw(x)
 end
 
 
+local function push_array_to_buffer(buffer, x)
+    -- `x` is array
+    push(buffer, ARRAY)
+    for i=1, #x do
+        serializers[type(x[i])](x[i])
+    end
+    -- TABLE_END shouldn't be pushed here.
+end
+
+
 local function serialize_with_meta(x, meta)
+    assert(type(meta) == "table", "`meta` not a table..?")
     local is_array = mt_to_template[meta] -- whether `x` is an array or not.
     local name = mt_to_name[meta]
+    
+    push(buffer, TABLE_WITH_META)
+    if name then
+        serializers.string(buffer, name)
+    else
+        serializers.table(buffer, meta)
+    end
 
-    -- TODO TODO TODO:::: This is unfinished.
-    -- We haven't even properly planned how to put the tags for this!!!!
-    -- Maybe do something like:
-    -- CUSTOM_TYPE [type_str]  FLAT_TABLE [flat table data]  ARRAY [array data] END
+    -- TABLE_WITH_META type_str OR metatable  <TABLE_DATA>
+    -- where <TABLE_DATA> is either  FLAT_TABLE <data> ARRAY <data> TABLE_END
+    -- OR   FLAT_TABLE <data>
     -- Or, if there is no ARRAY part, don't have an ARRAY tag.
     if mt_to_template[meta] then
         push(buffer, FLAT_TABLE)
@@ -219,13 +241,17 @@ local function serialize_with_meta(x, meta)
             local val = x[k]
             serializers[type(val)](val)
         end
+        if mt_to_arraybool[meta] then
+            push_array_to_buffer(buffer, x)
+        end
         push(buffer, TABLE_END)
-        assert(type(meta) == "table", "`meta` not a table..?")
-        serializers.table(meta)
+    elseif mt_to_arraybool[meta] then
+        -- then it's just an array- no template
+        push_array_to_buffer(buffer, x)
+        push(buffer, TABLE_END)
     else
         -- gonna have to serialize normally, oh well
         serialize_raw(x)
-        serializers.table(meta)
     end
 end
 
@@ -254,7 +280,6 @@ end
 local sUSMALL, dUSMALL = get_ser_funcs("I2")
 local sU32, dU32 = get_ser_funcs("I4")
 local sU64, dU64 = get_ser_funcs("I8")
-local sI16, dI16 = get_ser_funcs("i2") -- lowercase `i` is signed.
 local sI32, dI32 = get_ser_funcs("i4")
 local sI64, dI64 = get_ser_funcs("i8")
 local sN, dN = get_ser_funcs("n")
@@ -276,10 +301,7 @@ function serializers.number(buffer, x)
         else
             -- serialize signed
             local mag = abs(x)
-            if mag < ((2^15) - 2) then -- 16 bit signed num.
-                push(buffer, I16)
-                push(buffer, sI16(x))
-            elseif mag < (2 ^ 31 - 2) then -- 32 bit signed num
+            if mag < (2 ^ 31 - 2) then -- 32 bit signed num
                 push(buffer, I32)
                 push(buffer, sI32(x))
             else
@@ -324,25 +346,165 @@ deserializers
 
 ]]
 
-local function poll(reader, )
 
+local function peek(reader)
+    local i = reader.index
+    return reader.data:sub(i, i)
+end
+
+local function popn(reader, n)
+    local i = reader.index
+    reader.index = i + n
+    if reader:len() >= i + n then
+        return reader.data:sub(i, i + n)
+    else
+        return nil, "data string too short"
+    end
+end
+
+
+local function peekn(reader, n)
+    local i = reader.index
+    local len = reader:len()
+    return reader.data:sub(i, min(len, i + n)
+end
+
+
+local function pull(reader)
+    local i = reader.index
+    local ccode = data:byte(i)
+    if ccode <= USMALL_NUM then
+        deserializers[USMALL](reader)
+    end
+    local chr = data:sub(i, i)
+    local fn = deserializers[chr]
+    if not fn then
+        return nil, "Serialization char not found: " .. tostring(chr:byte(1,1))
+    end
+    reader.index = i + 1
+    local val, err = fn(reader)
+    if err then
+        return nil, err
+    end
+    return val
+end
+
+
+local function pull_ref(reader, x)
+    -- adds a new reference to the reader.
+    local refs = reader.refs
+    refs.count = refs.count + 1
+    refs[refs.count] = x
+end
+
+local function get_ref(reader, index)
+    return reader.refs[index]
 end
 
 
 
+local function make_number_deserializer(deser_func, n_bytes)
+    return function(re)
+        local data, er1 = popn(re, n_bytes)
+        if not data then
+            return nil, er1
+        end
+
+        local num, er2 = deser_func(data)
+        if not num then
+            return nil, er2
+        end
+        return num
+    end
+end
 
 
 
+deserializers[USMALL] = make_number_deserializer(dUSMALL, 2)
+
+deserializers[U32] = make_number_deserializer(dU32, 4)
+deserializers[I32] = make_number_deserializer(dI32, 4)
+
+deserializers[I64] = make_number_deserializer(dI64, 8)
+deserializers[U64] = make_number_deserializer(dU64, 8)
+
+local size_NUMBER = love.data.getPackedSize(PREFIX .. "n") -- i forgot size :P
+deserializers[NUMBER] = make_number_deserializer(dN, size_NUMBER)
+
+
+deserializers[NIL] = function(re)
+    return nil
+end
+
+deserializers[TRUE] = function(re)
+    return true
+end
+
+deserializers[FALSE] = function(re)
+    return false
+end
+
+
+local format_STRING = PREFIX .. "z"
+deserializers[STRING] = function(re)
+    -- null terminated string
+    local res, i = pcall(unpack, format_STRING, re.data, re.index)
+    if res then
+        if STRING_REF_LEN >= res:len() then
+            -- then we push as a ref
+            pull_ref(re, res)
+        end
+        re.index = i
+        return res
+    else
+        return nil, i -- `i` is error string here.
+    end
+end
+
+
+deserializers[TABLE_WITH_META] = function(re)
+    --[[
+        format is like this:
+        TABLE_WITH_META (metatable or string)
+        FLAT_TABLE (this means there is a template)
+        ARRAY (this means we treat as array)        
+    ]]
+    local val, err = pull(re)
+    if err then
+        return nil, err
+    end
+
+    local meta
+    if type(val) == "string" then
+        meta = name_to_mt[val]
+    else -- it's got to be table
+        meta = val
+    end
+    if type(meta) ~= "table" then
+        return nil, "after TABLE_WITH_META, there needs to be a string or table."
+    end
+
+    local tabl = pull(re)
+    return setmetatable(tabl, meta)
+end
 
 
 
+deserializers[REF] = function(re)
+    local index = pull(re)
+    if type(index) ~= "number" then
+        return nil, "Reference not a number"
+    end
+    local val = get_ref(re, index)
+    if not val then
+        return nil, "Non existant reference: " .. tostring(index)
+    end
+    return val
+end
 
 
 
-
-
-
-
+deserializers[]
 
 
 
@@ -355,9 +517,14 @@ local function newbuffer()
 end
 
 
-local function newreader()
+local function newreader(data)
     local reader = {
+        results = {};
+
+        refs = {count = 0}; -- [ref_num] --> object
         
+        data = data;
+        i = i
     }
 end
 
@@ -373,6 +540,22 @@ function pckr.serialize(...)
     return concat(buffer)
 end
 
+
+
+function pckr.deserialize(data)
+    local reader = newreader(data)
+
+    while data:len() >= index do
+        local val = pull(reader)
+        table.insert(reader.results, val)
+    end
+
+    -- TODO: ISSUE HERE!
+    -- If theres a `nil` value in the middle of the array,
+    -- unpack doesn't unpack the whole thing.
+    -- (There could be an extra arg to unpack though, so take a look)
+    return unpack(reader.results)
+end
 
 
 
