@@ -7,7 +7,7 @@ local entity = require(path..".cy_entity")
 
 
 local cy = setmetatable({},{
-    __index = function(t,k)
+    __index = function(_,k)
         error("Accessed undefined attribute in cy table: "..tostring(k))
     end;
 })
@@ -55,7 +55,7 @@ end
 
 
 
-getmetatable(cy).__newindex = function(t,k,v)
+getmetatable(cy).__newindex = function()
     error("You sure you wanna do this? Use rawset if you're sure bro...")
 end
 

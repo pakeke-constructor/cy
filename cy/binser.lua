@@ -501,6 +501,7 @@ local function serialize_to_file(path, mode, ...)
     file:close()
 end
 
+
 local function writeFile(path, ...)
     return serialize_to_file(path, "wb", ...)
 end

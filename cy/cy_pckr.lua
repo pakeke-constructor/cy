@@ -50,7 +50,7 @@ local TRUE  = "\240"
 local FALSE = "\215"
 
 local STRING = "\242"
-local STRING_REF_LEN = 3 -- strings must be at least 3 chars long 
+local STRING_REF_LEN = 4 -- strings must be at least X chars long 
                         -- to be counted as a reference.
 
 local TABLE_WITH_META = "\247" -- (type_name,  table // flat-table // array )
@@ -116,7 +116,13 @@ end
 
 function pckr.unregister_type(metatable, name)
     local mt = name_to_mt[name]
-    name_to_mt[name] = nil
+    if not mt then -- has no name
+        mt = metatable
+    end
+    
+    if name then
+        name_to_mt[name] = nil
+    end
     if mt then
         mt_to_name[mt] = nil
 
@@ -150,8 +156,10 @@ function pckr.register_array(name_or_mt)
     local mt = name_or_mt
     if type(name_or_mt) == "string" then 
         mt = name_to_mt[name_or_mt] -- assume `name_or_mt` is name
+        mt_to_name[mt] = name_or_mt
+    else
+        error("pckr.register_array takes a string")
     end
-    mt_to_template[mt] = template
 end
 
 
@@ -197,11 +205,11 @@ local function push_ref(buffer, ref_num)
 end
 
 
-local function serialize_raw(x)
+local function serialize_raw(buffer, x)
     push(buffer, TABLE)
     for k,v in pairs(x) do
-        serialize[type(k)](k)
-        serialize[type(v)](v)
+        serializers[type(k)](k)
+        serializers[type(v)](v)
     end
     push(buffer, TABLE_END)
 end
@@ -217,9 +225,8 @@ local function push_array_to_buffer(buffer, x)
 end
 
 
-local function serialize_with_meta(x, meta)
+local function serialize_with_meta(buffer, x, meta)
     assert(type(meta) == "table", "`meta` not a table..?")
-    local is_array = mt_to_template[meta] -- whether `x` is an array or not.
     local name = mt_to_name[meta]
     
     push(buffer, TABLE_WITH_META)
@@ -264,7 +271,7 @@ function serializers.table(buffer, x)
         add_reference(buffer, x)
         local meta = getmetatable(x)
         if meta then
-            serialize_with_meta(x, meta)
+            serialize_with_meta(buffer, x, meta)
         else
             serialize_raw(x)
         end
@@ -324,7 +331,9 @@ function serializers.string(buffer, x)
         push(buffer, x)
         push(buffer, "\0") -- remember to push null terminator!
         -- TODO: Is this null terminator needed? Do testing
-        add_reference(buffer, x)
+        if x:len() >= STRING_REF_LEN then
+            add_reference(buffer, x)
+        end
     end
 end
 
@@ -366,17 +375,17 @@ end
 local function peekn(reader, n)
     local i = reader.index
     local len = reader:len()
-    return reader.data:sub(i, min(len, i + n)
+    return reader.data:sub(i, min(len, i + n))
 end
 
 
 local function pull(reader)
     local i = reader.index
-    local ccode = data:byte(i)
+    local ccode = byte(reader.data, i)
     if ccode <= USMALL_NUM then
         deserializers[USMALL](reader)
     end
-    local chr = data:sub(i, i)
+    local chr = sub(reader.data, i, i)
     local fn = deserializers[chr]
     if not fn then
         return nil, "Serialization char not found: " .. tostring(chr:byte(1,1))
@@ -504,7 +513,6 @@ end
 
 
 
-deserializers[]
 
 
 
@@ -518,13 +526,13 @@ end
 
 
 local function newreader(data)
-    local reader = {
+    return {
         results = {};
 
         refs = {count = 0}; -- [ref_num] --> object
         
         data = data;
-        i = i
+        i = 1
     }
 end
 
@@ -545,7 +553,7 @@ end
 function pckr.deserialize(data)
     local reader = newreader(data)
 
-    while data:len() >= index do
+    while data:len() >= data.index do
         local val = pull(reader)
         table.insert(reader.results, val)
     end
@@ -555,6 +563,18 @@ function pckr.deserialize(data)
     -- unpack doesn't unpack the whole thing.
     -- (There could be an extra arg to unpack though, so take a look)
     return unpack(reader.results)
+end
+
+
+
+
+function pckr.serialize_async()
+    -- returns `buffer` object
+end
+
+
+function pckr.deserialize_async()
+
 end
 
 

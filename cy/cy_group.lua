@@ -26,21 +26,21 @@ end
 
 -- callback for when entities are added  (signature:  (ent))
 function view:on_added(func)
-    local group = self.___self
-    group.added_cbs:add(func)
+    local g = self.___self
+    g.added_cbs:add(func)
 end
 
 -- callback for when entities are removed (signature:  (ent))
 function view:on_removed(func)
-    local group = self.___self
-    group.removed_cbs:add(func)
+    local g = self.___self
+    g.removed_cbs:add(func)
 end
 
 function view:delete_callback(func)
-    local group = self.___self
+    local g = self.___self
     -- deletes this callback from both `on_added` and `on_removed`
-    group.added_cbs:remove(func)
-    group.removed_cbs:remove(func)
+    g.added_cbs:remove(func)
+    g.removed_cbs:remove(func)
 end
 
 
