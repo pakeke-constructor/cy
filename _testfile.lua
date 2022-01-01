@@ -14,6 +14,7 @@ local sub = string.sub
 local dump = string.dump
 local floor = math.floor
 local frexp = math.frexp
+-- selene: allow(incorrect_standard_library_use)
 local unpack = unpack or table.unpack
 
 -- Lua 5.3 frexp polyfill
@@ -241,11 +242,4 @@ for i=1, AM do
     x = (x + (unpack(format, pack("string",format, i % 100)))) % 5000
 end
 end, "pack unpack")
-
-
-
-
-
-
-
 

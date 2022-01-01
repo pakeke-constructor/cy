@@ -1,5 +1,8 @@
 
-std = "cy"
+std = "love2d"
 
+[rules]
+multiple_statements = "allow"
+parenthese_conditions = "allow"
 
 

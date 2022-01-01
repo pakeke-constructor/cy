@@ -278,7 +278,7 @@ function serializers.table(buffer, x)
     end
 end
 
-serializers["nil"] = function(buffer, x)
+serializers["nil"] = function(buffer, _)
     push(buffer, NIL)
 end
 

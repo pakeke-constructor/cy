@@ -1,9 +1,0 @@
-
-[selene]
-base = "lua51"
-name = "cy"
-
-
-[love]
-any = true
-

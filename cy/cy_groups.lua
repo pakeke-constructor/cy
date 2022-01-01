@@ -38,7 +38,7 @@ local function set_ftps(fields, group)
     --[[
         Updates group field hash with new fields
     ]]
-    for i,field in ipairs(fields) do
+    for _,field in ipairs(fields) do
         if not field_to_groups[field] then
             field_to_groups[field] = {group}
         else
@@ -107,7 +107,7 @@ end
 
 
 local function is_worthy(group, candidate_fields)
-    for j, gf in ipairs(group.fields) do
+    for _, gf in ipairs(group.fields) do
         if not contains(candidate_fields, gf) then
             -- We don't care about the O(n^2) here,
             -- This function is hardly ever called
@@ -130,7 +130,7 @@ function groups._get_groups(fields)
     for i=1, #fields do
         local f = fields[i]
         if field_to_groups[f] then
-            for i, group in ipairs(field_to_groups[f]) do
+            for _, group in ipairs(field_to_groups[f]) do
                 if (not seen[group]) and is_worthy(group, fields) then
                     table.insert(tab, group)
                     seen[group] = true

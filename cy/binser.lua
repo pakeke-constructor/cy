@@ -37,7 +37,7 @@ local sub = string.sub
 local dump = string.dump
 local floor = math.floor
 local frexp = math.frexp
-local unpack = unpack or table.unpack
+local unpack = unpack or rawget(table, "unpack")
 
 -- Lua 5.3 frexp polyfill
 -- From https://github.com/excessive/cpml/blob/master/modules/utils.lua
@@ -66,8 +66,8 @@ end
 
 local bigIntSupport = false
 local isInteger
-if math.type then -- Detect Lua 5.3
-    local mtype = math.type
+if rawget(math, "type") then -- Detect Lua 5.3
+    local mtype = rawget(math, "type")
     bigIntSupport = loadstring[[
     local char = string.char
     return function(n)
@@ -401,7 +401,7 @@ local function deserialize_value(str, index, visited)
             if nextindex == oldindex then error("Expected more bytes of input.") end
         end
         count, nextindex = number_from_str(str, nextindex)
-        for i = 1, count do
+        for _ = 1, count do
             local k, v
             local oldindex = nextindex
             k, nextindex = deserialize_value(str, nextindex, visited)
