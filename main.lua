@@ -1,4 +1,6 @@
 
+_G.inspect = require("cy.inspect")
+
 -- selene: allow(global_usage)
 setmetatable(_G,{ 
     __index=function(_,k) error("undefined var: " .. tostring(k)) end;
@@ -8,6 +10,6 @@ setmetatable(_G,{
 
 
 
-require("cy._cy_testing")
+require("test")
 
 

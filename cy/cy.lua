@@ -3,6 +3,7 @@ local path = (...):gsub('%.[^%.]+$', '')
 
 local groups = require(path..".cy_groups")
 local entity = require(path..".cy_entity")
+local pckr = require(path..".pckr")
 --local serialize = require(path..".cy_serialize")
 
 
@@ -20,6 +21,7 @@ function cy.clear() -- Clears all entities
         ent = all[i]
         ent:delete()        
     end
+    entity.clear_ids()
     cy.flush() -- force flush
 end
 
@@ -42,9 +44,16 @@ function cy.flush()
 end
 
 
-function cy.entity(tabl, typename) -- Creates a new entity
+function cy.new_etype(tabl, typename) -- Creates a new entity type
     return entity.construct(tabl, typename)
 end
+
+
+function cy.delete_etype(tabl_or_typename)
+    entity.delete_etype(tabl_or_typename)
+end
+
+
 
 
 function cy.get_entities(...) -- gets an entity group
@@ -52,7 +61,57 @@ function cy.get_entities(...) -- gets an entity group
 end
 
 
+function cy.get_entity(id)
+    if not id then
+        return nil
+    end
+    return entity.id_to_ent[id]
+end
 
+
+
+function cy.clear_fully()
+    -- clears all entities, alongside their types
+    cy.clear()
+    local rembuffer = {}
+    for typename, _ in pairs(entity.typename_to_etype) do
+        table.insert(rembuffer, typename)
+        pckr.unregister(typename)
+    end
+    for i=1, #rembuffer do
+        entity.typename_to_etype[rembuffer[i]] = nil
+    end
+end
+
+
+function cy.serialize()
+    cy.flush()
+    entity.set_reference_mode(false)
+    local val = pckr.serialize(groups.all.view)
+    entity.set_reference_mode(true)
+    return val
+end
+
+
+function cy.deserialize(data)
+    cy.flush()
+    entity.set_reference_mode(false)
+    
+    local ret, err = pckr.deserialize(data)
+    if err then
+        return nil, err
+    end
+    
+    -- ret should be an array of entities (`all` group)
+    for i=1, #ret do
+        entity.new_ent_fromtable(ret[i])
+    end
+    entity.set_reference_mode(true)
+    return true
+end
+
+
+cy.pckr = pckr -- access to `pckr` library.
 
 
 getmetatable(cy).__newindex = function()

@@ -2,8 +2,7 @@
 # cy
 
 Hybrid OOP / Entity-Component-System framework,
-designed for fast, asynchronous
-serialization and better workings with networking.
+designed better serialization and better workings with networking.
 
 The successor of [Cyan.](https://github.com/pakeke-constructor/Cyan)
 
@@ -59,14 +58,15 @@ end
 
 
 group:has(ent) -- whether a group has an ent (true/false)
+-- ( This is O(1) )
 
 
-group.on_added(function(end)
+group:on_added(function(end)
     ... -- Called when `ent` is added to group
 end)
 
 
-group.on_removed(function(ent)
+group:on_removed(function(ent)
     ... -- Called when `ent` is removed from group
 end)
 
@@ -88,16 +88,16 @@ impossible to send over a network.
 ## ADVANCED USAGE:
 ```lua
 
-local main_entity = cy.entity({
+local ent_ctor = cy.new_etype({
     "position", "velocity", "health"
-})
+}, "main")
 
 
-local e1 = main_entity()
+local e1 = ent_ctor()
 
 
 
-e1:get_type() -- `main_entity`
+e1:get_type() -- `main`
 
 
 -- Also, since entity attributes are static,

@@ -1,7 +1,13 @@
 
 _testfile.lua
-love2d.toml
-selene.toml
+*.toml
 conf.lua
 main.lua
+
+ISSUES.md
+
+cy/TODO.md
+cy/PLANNING.md
+
+
 

@@ -1,6 +1,25 @@
 
 
 ### ISSUES
+
+
+Client / Server side entities.
+What happens if we create a client side entity, with ent.id = 6969
+and another entity is created on the server-side.
+(Imagine that the server side entity also has ent.id = 6969)
+Suddenly, the server sends over the Server-side entity, and tells the client
+to create it!!
+Oh no! this is bad.
+--> Basically, I think this means that we shouldn't allow entities to exist
+on the server-side or client-side only; they must exist on both sides at once.
+
+
+
+
+
+
+
+
 Issues we may run into whilst serializing:
 
 
@@ -83,6 +102,22 @@ No solution here I don't think; this is probably unsolveable.
 The best we can do is just to encourage modders to not mutate entity state
 outside of direct ent update broadcasts.
 --> BUT KEEP THINKING OF POTENTIAL SOLUTIONS!!!
+
+
+
+
+
+Solution:
+We don't do async serialization;
+just pause the server whilst players are joining.
+There's no better way I don't think   :/
+
+
+
+
+
+
+
 
 
 

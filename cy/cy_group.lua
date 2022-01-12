@@ -1,6 +1,8 @@
 
 local path = (...):gsub("%.cy_group", "")
+
 local sset = require(path..".cy_set")
+local pckr = require(path..".pckr")
 
 
 local group = {}
@@ -10,6 +12,9 @@ local group_mt = {__index = group}
 -- `view` is what the user has access to!!!
 local view = {} -- User view method proxy
 local view_mt = {__index = view}
+
+pckr.register(view_mt, "view_mt")
+pckr.low.set_template(view_mt, {"foo"})
 
 
 function view:size()
@@ -43,14 +48,6 @@ function view:delete_callback(func)
     g.removed_cbs:remove(func)
 end
 
-
-
-
-
-
-local function objects_has(objects, candidate)
-   return (objects.___self.pointers[candidate])
-end
 
 
 local function new(fields)
